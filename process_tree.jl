@@ -5,6 +5,7 @@ using Distributions
 using LsqFit
 using LaTeXStrings
 using StatsBase
+using ProgressMeter
 
 include("utils.jl")
 include("figure.jl")
@@ -38,69 +39,69 @@ function build_tree(depth, rdist, p_slip; final_only=false)
         isterminal = s -> s == "TERM"
     )
 end
-DEPTH = 16
-
-# mdp = build_tree(DEPTH, Bernoulli(0.5), 0.5)
-mdp = build_tree(DEPTH, Normal(0, 5), 0.5; final_only=true)
-
-solver = SparseValueIterationSolver(max_iterations=1000, belres=1e-6, verbose=false) # creates the solver
-println("solving")
-policy = solve(solver, mdp)
 
 # %% --------
-N = 100000
+rdist = Normal(0, 5)
 
-println("rollouts")
-rs = RolloutSimulator()
-smart = map(1:N) do i
-    simulate(rs, mdp, policy)
+function simulate_outcomes(p_slip; depth=10, n_mdp=100, n_roll=10000)
+    solver = SparseValueIterationSolver(max_iterations=1000, belres=1e-6)
+    outcomes = @showprogress pmap(1:n_mdp) do _
+        mdp = build_tree(depth, rdist, p_slip; final_only=true)
+        policy = solve(solver, mdp);
+        rsim = RolloutSimulator()
+        map(1:n_roll) do i
+            simulate(rsim, mdp, policy)
+        end
+    end
+    reduce(vcat, outcomes)
 end
 
-dumb = map(1:N) do i
-    simulate(rs, mdp, RandomPolicy(mdp))
-end
+outcomes = simulate_outcomes(0.5)
 
-# %% --------
-
-println("plotting")
+out = Int.(round.(outcomes))
 
 lim = maximum(abs.((
-    quantile(dumb, .01),
-    quantile(smart, .99),
+    quantile(rdist, .01),
+    quantile(out, .99),
 ))) |> round |> Int
-g = -lim:lim
 
-s = normalize(counts(Int.(round.(smart)), g))
-d = normalize(counts(Int.(round.(dumb)), g))
-d[d .< 30 / N] .= NaN
-d
+x = -lim:lim
 
-@. exponential(x, (x0, β)) = exp(β * (x .- x0))
+y1 = normalize(counts(out, x))
+y0 = pdf.(rdist, x)
 
-function exponential_fit(x, y, p0=[0., 1.,])
-    fit = curve_fit(exponential, x, y, p0)
-    exponential(x, fit.param)
-end
+# %% --------
 
-function plot_exponential_fit!(x, y, p0=[0., 1.,])
+
+@. exponential(x, (C, x0, β)) = C + exp(β * (x - x0))
+
+function plot_fit!(x, y, p0=[1., 0., 1.])
     res = curve_fit(exponential, x, y, p0)
-    plot!(x, y, color=:black)
+    plot!(x, y, color=:lightgray)
     pred = exponential(x, res.param)
-    plot!(x, pred, linestyle=:dot, color=:red)
-    x0, β = round.(res.param, digits=2)
-    expr = L"e^{%$β(x - %$x0)}"
-    annotate!(:topleft, text(expr, 14, :left))
+    @show res.param
+    plot!(x, pred, linestyle=:dot, color=:black)
+    # C, x0, β = round.(res.param, digits=2)
+    # expr = L"%$C + e^{%$β(x - %$x0)}"
+    # annotate!(:topleft, text(expr, 14, :left))
 end
+
+y = y1 ./ y0
 
 figure() do
     p1 = plot()
-    plot!(g, d)
-    plot!(g, s)
+    plot!(x, y0, color=:gray)
+    plot!(x, y1, color=groups.high.color)
 
     p2 = plot()
-    keep = isfinite.(s ./ d)
-    x = g[keep]; y = (s ./ d)[keep]
-    plot_exponential_fit!(x, y)
+    plot_fit!(x, y1 ./ y0)
     plot(p1, p2, size=(500, 200))
 end
 
+
+# %% --------
+
+figure() do
+    x = -15:.01:15
+    plot(x, power(x, (0, -.5, 1.01, 100)), yaxis=:log)
+end
