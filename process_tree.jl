@@ -4,20 +4,22 @@ using Combinatorics
 using Distributions
 using LsqFit
 using LaTeXStrings
+using StatsBase
 
 include("utils.jl")
 include("figure.jl")
 
 
-function build_tree(depth, rdist, p_slip)
+function build_tree(depth, rdist, p_slip; final_only=false)
     levels = map(0:depth) do d
         join.(multiset_permutations("01"^d, d))
     end
     push!(levels, ["TERM"])
     states = reduce(vcat, levels)
     actions = "01"
-    rewards = Dict(l => float(rand(rdist)) for l in states)
-    # rewards = Dict(l => rand(rdist) for l in levels[end-1])
+    rewards = final_only ?
+        Dict(l => float(rand(rdist)) for l in levels[end-1]) :
+        Dict(l => float(rand(rdist)) for l in states)
     QuickMDP(;
         states,
         actions,
@@ -38,33 +40,40 @@ function build_tree(depth, rdist, p_slip)
 end
 DEPTH = 16
 
-mdp = build_tree(DEPTH, Bernoulli(0.5), 0.5)
+# mdp = build_tree(DEPTH, Bernoulli(0.5), 0.5)
+mdp = build_tree(DEPTH, Normal(0, 5), 0.5; final_only=true)
 
 solver = SparseValueIterationSolver(max_iterations=1000, belres=1e-6, verbose=false) # creates the solver
 println("solving")
 policy = solve(solver, mdp)
 
-reward(mdp, "0", '0')
-
 # %% --------
+N = 100000
 
 println("rollouts")
 rs = RolloutSimulator()
-smart = map(1:1000000) do i
+smart = map(1:N) do i
     simulate(rs, mdp, policy)
 end
 
-dumb = map(1:1000000) do i
+dumb = map(1:N) do i
     simulate(rs, mdp, RandomPolicy(mdp))
 end
 
 # %% --------
 
-println("plottings")
+println("plotting")
 
-g = 0:DEPTH
-s = normalize(counts(Int.(smart), g))
-d = normalize(counts(Int.(dumb), g))
+lim = maximum(abs.((
+    quantile(dumb, .01),
+    quantile(smart, .99),
+))) |> round |> Int
+g = -lim:lim
+
+s = normalize(counts(Int.(round.(smart)), g))
+d = normalize(counts(Int.(round.(dumb)), g))
+d[d .< 30 / N] .= NaN
+d
 
 @. exponential(x, (x0, β)) = exp(β * (x .- x0))
 
@@ -75,9 +84,9 @@ end
 
 function plot_exponential_fit!(x, y, p0=[0., 1.,])
     res = curve_fit(exponential, x, y, p0)
-    plot!(x, y)
+    plot!(x, y, color=:black)
     pred = exponential(x, res.param)
-    plot!(x, pred, linestyle=:dot)
+    plot!(x, pred, linestyle=:dot, color=:red)
     x0, β = round.(res.param, digits=2)
     expr = L"e^{%$β(x - %$x0)}"
     annotate!(:topleft, text(expr, 14, :left))
