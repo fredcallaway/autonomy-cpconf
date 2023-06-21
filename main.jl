@@ -1,11 +1,5 @@
 include("base.jl")
 
-testfig("considered") do (;β, color)
-    plot!(u, prob_consider.(u, d; β, u0=1); color)
-end
-
-# %% --------
-
 d = Normal(-1, 1)
 u = -4:.01:4
 

@@ -1,3 +1,5 @@
+include("base.jl")
+
 g = grid(
     µ=-2:.05:2,
     σ=0:.05:4
@@ -17,14 +19,13 @@ end
 
 function heatfig(X, name="tmp")
     figure(name; pdf=true) do
-        heatmap(collect(X),
+        heatmap(X,
             bottom_margin=-4mm,
             left_margin=-4mm,
             size=(200,200),
-            # framestyle=:none,
-            xaxis=false, yaxis=false,
+            # framestyle=:none, # xaxis=false, yaxis=false,
             cbar=false, clim=(0,1),
-            # xlab=L"\sigma", ylab=L"\mu"
+            xlab=L"\sigma", ylab=L"\mu"
         )
     end
 end
@@ -32,13 +33,3 @@ end
 heatfig(low, "low")
 heatfig(high, "high")
 heatfig(high .- low, "diff")
-# %% --------
-
-
-figure() do
-    heatmap(high, size=(300,200), xlab=L"\sigma", ylab=L"\mu")
-end
-
-figure() do
-    heatmap(high .- low, size=(300,200), xlab=L"\sigma", ylab=L"\mu")
-end

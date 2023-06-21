@@ -23,37 +23,58 @@ function prob_occur(u, d::Distribution; β)
     pdf(d, u) * exp(β * u)
 end
 
-
 function subjective_value(u, p; β=0., n_sample=1, u0=0.)
     w_soft = exp.(u .* β)
     w_uws = abs.(u .- u0)
+    # w_uws = ones(length(u))
     sampled = sample(eachindex(u), Weights(p .* w_soft .* w_uws), n_sample)
     mean(u[sampled], Weights(1 ./ w_uws[sampled]))
 end
 
-subjective_value(u; kws...) = subjective_value(p, 1; kws...)
+subjective_value(u; kws...) = subjective_value(u, 1; kws...)
 
-function prob_accept(n_sample, d; β, N=100)
-    # n_sample == 1 && return prob_accept_one(d; β)
+function prob_accept(n_sample, d::ContinuousDistribution; β, u0=0, N=100)
+    n_sample == 1 && return prob_accept_one(d; β, u0)
     monte_carlo() do
         u = rand(d, N)
-        subjective_value(u; β, n_sample) > 0
+        subjective_value(u; β, u0, n_sample) > 0
     end
 end
 
-function integration_limits(d, β; tol=1e-10)
-    lo = 0
-    while prob_occur(lo, d; β) > tol
-        lo -= 1
+function prob_accept(n_sample, d::DiscreteDistribution; β, u0=0, N=100)
+    @assert false
+    u = support(d)
+    p = pdf.(d, u)
+    monte_carlo() do
+        subjective_value(u, p; β, u0, n_sample) > rand((-eps(), eps()))
     end
-    hi = 0
+end
+
+function prob_accept_one(d; β, u0)
+    lo, hi = integration_limits(d, β)
+    good = integrate(0, hi) do u
+        prob_consider(u, d; β, u0)
+    end
+    bad = integrate(lo, 0) do u
+        prob_consider(u, d; β, u0)
+    end
+    good / (bad + good)
+end
+
+
+function integration_limits(d, β; tol=1e-10)
+    lo = d.µ
+    while prob_occur(lo, d; β) > tol
+        lo -= d.σ
+    end
+    hi = d.µ
     while prob_occur(hi, d; β) > tol
-        hi += 1
+        hi += d.σ
     end
     lo, hi
 end
 
-@memoize function expected_value(d; β)
+@memoize function expected_value(d::ContinuousDistribution; β)
     lo, hi = integration_limits(d, β)
     unnorm = integrate(lo, hi) do u
         p = pdf(d, u) * exp(β * u)
@@ -65,15 +86,10 @@ end
     unnorm / Z
 end
 
-function prob_accept_one(d; β)
-    lo, hi = integration_limits(d, β)
-    good = integrate(0, hi) do u
-        prob_consider(u, d; β)
-    end
-    bad = integrate(lo, 0) do u
-        prob_consider(u, d; β)
-    end
-    good / (bad + good)
+function expected_value(d::DiscreteDistribution; β)
+    u = support(d)
+    p = pdf.(d, u)
+    sum(normalize!(p .* exp.(β .* u)) .* u)
 end
 
 function fig(f, name; kws...)

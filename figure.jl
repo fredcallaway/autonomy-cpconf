@@ -3,7 +3,7 @@ using StatsPlots.Plots.Measures
 using Dates
 mkpath(".fighist")
 mkpath("figs")
-gr(label="", dpi=200, size=(400,300), lw=2)
+gr(label="", dpi=200, size=(300,200), lw=3)
 ENV["GKSwstype"] = "nul"
 
 function figure(f, name="tmp"; pdf=false, kws...)
