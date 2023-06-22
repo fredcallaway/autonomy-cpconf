@@ -9,6 +9,11 @@ struct Node{N}
     r::Float64
 end
 
+Node(children::Node...) = Node(children, 0.)
+Node(r::Float64) = Node((), r)
+
+isleaf(n::Node{N}) where N = N == 0
+
 function tree(depth, rdist)
     if depth == 0
         Node((), rand(rdist))

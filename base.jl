@@ -42,7 +42,6 @@ function prob_accept(n_sample, d::ContinuousDistribution; β, u0=0, N=100)
 end
 
 function prob_accept(n_sample, d::DiscreteDistribution; β, u0=0, N=100)
-    @assert false
     u = support(d)
     p = pdf.(d, u)
     monte_carlo() do
