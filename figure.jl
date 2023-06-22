@@ -1,6 +1,8 @@
 using StatsPlots
 using StatsPlots.Plots.Measures
 using Dates
+using AxisKeys
+
 mkpath(".fighist")
 mkpath("figs")
 gr(label="", dpi=200, size=(300,200), lw=3)
