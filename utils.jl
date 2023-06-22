@@ -6,6 +6,8 @@ using Statistics
 using DataFrames, DataFramesMeta, CSV
 using Printf
 
+cummean(x) = cumsum(x) ./ eachindex(x)
+
 centers(x::AbstractRange) = minimum(x)+step(x)/2:step(x):maximum(x)
 
 Base.get(name::Symbol) = Base.Fix2(getproperty, name)

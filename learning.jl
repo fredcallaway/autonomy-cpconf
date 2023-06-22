@@ -60,23 +60,40 @@ end
 
 # %% --------
 
-t = Node(
+n = Node(
     Node(0.),
     Node(
-        Node(-2),
-        Node(1)
+        Node(-1),
+        Node(
+            Node(-5),
+            Node(1)
+        )
     )
 )
 
-figure("learning", xlab="Trial", ylab="Perceived Control") do
-    high = [0, 0, 5]
-    low = [0, 5, 0]
-    for i in 1:10
-        trace = learn(n, copy(high), 1000; p_slip=0.02, N=1)
-        plot!(invert(trace)[2], w=1; groups.high.color)
 
-        trace = learn(n, copy(low), 1000; p_slip=0.02, N=1)
-        plot!(invert(trace)[2], w=1; groups.low.color)
+
+figure("learning", ylim=(-1, 1)) do
+    p1 = plot(xlab="Trial", ylab="Perceived Control")
+    p2 = plot(xlab="Trial", ylab="Average Reward")
+
+    n_trial = 1000
+
+    for i in 1:10
+        n = tree(10, SkewNormal(0,1, -5));
+        baseline = VDist(n, p_slip=0.5)
+
+        high = 10 * normalize(exp.(3 .* baseline.v))
+        low = 10 * normalize(exp.(-3 .* baseline.v))
+
+        trace = learn(n, copy(high), n_trial; p_slip=0.02, N=1)
+        plot!(p2, cummean(invert(trace)[1]), w=1; groups.high.color)
+        plot!(p1, cummean(invert(trace)[1]), w=1; groups.high.color)
+
+        trace = learn(n, copy(low), n_trial; p_slip=0.02, N=1)
+        plot!(p2, cummean(invert(trace)[1]), w=1; groups.low.color)
+        plot!(p1, cummean(invert(trace)[1]), w=1; groups.low.color)
     end
+    plot(p1, p2, size=(600, 250), leftmargin=5mm, bottommargin=5mm)
 end
 
