@@ -3,6 +3,8 @@ include("utils.jl")
 include("figure.jl")
 include("base.jl")
 
+using DataStructures
+using Optim
 
 # %% --------
 
@@ -31,9 +33,6 @@ function rollout(n::Node; β, p_slip, N=1)
     end
     n.r
 end
-
-using DataStructures
-using Optim
 
 function fit_β(baseline::VDist, d::VDist)
     optimize(-5, 5) do β
@@ -70,8 +69,6 @@ n = Node(
         )
     )
 )
-
-
 
 figure("learning", ylim=(-1, 1)) do
     p1 = plot(xlab="Trial", ylab="Perceived Control")
