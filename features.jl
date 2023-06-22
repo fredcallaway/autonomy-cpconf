@@ -1,10 +1,9 @@
 include("base.jl")
 include("curve_fitting.jl")
 
-function sample_outcomes(control; n=100000, k=2, N=30, rdist=Normal(0,1))
+function sample_outcomes(R, control; n=100000, rdist=Normal(0,1))
     repeatedly(n) do
-        R = rand(rdist, (k, N))
-        sum(1:N) do i
+        sum(1:size(R, 2)) do i
             if rand(Bernoulli(control))
                 maximum(R[:, i])
             else
@@ -17,9 +16,27 @@ end
 # %% --------
 
 figure() do
-    x = sample_outcomes(1; N=100)
+    k = 2; N = 100
+    R = rand(Normal(0, 1), (k, N))
+    x = sample_outcomes(R, .95)
     histogram!(x, w=0, normalize=:pdf)
     plot!(fit(Normal, x))
+end
+
+# %% --------
+
+
+k = 2; N = 100
+R = rand(Normal(0, 1), (k, N))
+d0 = fit(Normal, sample_outcomes(R, 0.))
+d1 = fit(Normal, sample_outcomes(R, 0.5))
+# %% --------
+
+figure() do
+    d0 = Normal(0, 1)
+    d1 = Normal(-1.5, 1.2)
+    x = -3:.1:10
+    plot!(x, pdf.(d1, x) ./ pdf.(d0, x))
 end
 
 # %% --------
