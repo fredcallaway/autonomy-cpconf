@@ -8,9 +8,18 @@ using Distributions
 using Memoize
 using QuadGK
 using LaTeXStrings
+using Colors
 
 integrate(f, lo, hi) = first(quadgk(f, lo, hi))
 
+
+CTRUE = "#5FA3B4"
+CBIAS = "#E1C67C"
+CSAMP = "#83D89E"
+
+CLOW = "#9CA9FF"
+CHIGH = "#DE7E90"
+# CMID = "#BC93C8"
 # %% --------
 
 function prob_consider(u, d::Distribution; β, u0=0., C=0.)
@@ -62,13 +71,14 @@ end
 
 
 function integration_limits(d, β; tol=1e-10)
-    lo = d.µ
+    µ, σ = mean(d), std(d)
+    lo = µ
     while prob_occur(lo, d; β) > tol
-        lo -= d.σ
+        lo -= σ
     end
-    hi = d.µ
+    hi = µ
     while prob_occur(hi, d; β) > tol
-        hi += d.σ
+        hi += σ
     end
     lo, hi
 end
@@ -92,19 +102,21 @@ function expected_value(d::DiscreteDistribution; β)
 end
 
 function fig(f, name; kws...)
-    figure(name; pdf=true, size=(200, 200), widen=false, framestyle=:origin, yticks=false, xticks=false, kws...) do
+    figure(name; pdf=true, size=(200, 150), widen=false, framestyle=:origin, yticks=false, xticks=false, kws...) do
         f()
     end
 end
 
 groups = (
     high = (
-        color="#D57A72",
-        β = 2
+        color=CHIGH,
+        β = 2,
+        i = 2
     ),
     low = (
-        color="#70D6FF",
-        β = 0.2
+        color=CLOW,
+        β = 0.2,
+        i = 1
     )
 )
 

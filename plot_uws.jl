@@ -1,39 +1,44 @@
 include("base.jl")
 
-d = 0.6 * TDist(1)
-u = -8:.01:8
+d = TDist(1)
+u = -7:.01:7
 
 fig("uws") do
-    plot!(u, pdf.(d, u), color=:gray)
+    plot!(u, pdf.(d, u), color=CTRUE)
+end
+
+fig("lieder") do
+    plot!(u, abs.(u), color=CBIAS)
 end
 
 fig("considered") do
-    plot!(u, prob_consider.(u, d; β=0); color=:black)
+    plot!(u, prob_consider.(u, d; β=0); color=CSAMP)
 end
 
 # %% --------
 d = MixtureModel([Normal(.5, .2), Normal(-3, .2)], [0.8, 0.2])
-u = -6:.01:2
+u = -4:.01:4
 
 fig("uws_skew") do
-    plot!(u, pdf.(d, u), color=:gray)
+    plot!(u, pdf.(d, u), color=CTRUE)
 end
 
 fig("considered_skew") do
-    plot!(u, prob_consider.(u, d; β=0); color=:black)
+    plot!(u, prob_consider.(u, d; β=0); color=CSAMP)
 end
 
 # %% --------
 
-d = 3.3 + -1 * Gamma(1.1, 3)
-u = -10:.01:6
-mean(d)
-
-fig("uws_skew") do
-    plot!(u, pdf.(d, u), color=:gray)
+fig("bear") do
+    plot!(u, exp.(u), color=CBIAS, size=1.2 .* (200, 150))
 end
-# %% --------
 
-fig("considered_skew") do
-    plot!(u, prob_consider.(u, d; β=0); color=:black)
+fig("bear_small") do
+    plot!(u, exp.(u), color=CBIAS)
+end
+
+fig("norm01") do
+    u = -4:.01:4
+    plot!(u, pdf.(Normal(0,1), u), color=CTRUE)
+    plot!(size=(100,100))
 end

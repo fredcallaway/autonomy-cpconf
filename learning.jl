@@ -6,8 +6,6 @@ include("base.jl")
 using DataStructures
 using Optim
 
-# %% --------
-
 function softmax(d::VDist; β)
     p = normalize(d.p .* exp.(β * d.v))
     VDist(p, d.v)
@@ -35,12 +33,11 @@ function rollout(n::Node; β, p_slip, N=1)
 end
 
 function fit_β(baseline::VDist, d::VDist)
-    optimize(-5, 5) do β
+    optimize(-50, 50) do β
         pred = normalize(baseline.p .* exp.(β .* d.v))
         crossentropy(d.p, pred)
     end |> Optim.minimizer
 end
-
 
 function learn(n::Node, experience, n_trial::Int; p_slip, N)
     baseline = VDist(n, p_slip=0.5)
@@ -59,38 +56,59 @@ end
 
 # %% --------
 
-n = Node(
-    Node(0.),
-    Node(
-        Node(-1),
-        Node(
-            Node(-5),
-            Node(1)
-        )
-    )
-)
+d = SkewNormal(0.5, 1, -5)
+u = -3:.01:3
+p0 = pdf.(d, u)
 
-figure("learning", ylim=(-1, 1)) do
-    p1 = plot(xlab="Trial", ylab="Perceived Control")
-    p2 = plot(xlab="Trial", ylab="Average Reward")
+fig("learning_baseline") do
+    plot!(u, p0, color=CTRUE)
+end
 
-    n_trial = 1000
+fig("learning_experienced") do
+    foreach(groups) do (;β, color)
+        plot!(u, exp.(β .* u) .* p0; color)
+    end
+end
 
-    for i in 1:10
-        n = tree(10, SkewNormal(0,1, -5));
+fig("learning_bias") do
+    foreach(groups) do (;β, color)
+        # β = min(.7, β)
+        p = @. exp(β * u)
+        plot!(u, p; color, ylim=(0, 10))
+    end
+end
+
+# %% --------
+
+
+traces = cache("cache/learning") do
+    repeatedly(10) do
+        n_trial = 300
+        n = tree(14, SkewNormal(0, 1, -5));
         baseline = VDist(n, p_slip=0.5)
 
-        high = 10 * normalize(exp.(3 .* baseline.v))
-        low = 10 * normalize(exp.(-3 .* baseline.v))
+        good = 10 * normalize(exp.(3 .* baseline.v))
+        bad = 10 * normalize(exp.(-3 .* baseline.v))
 
-        trace = learn(n, copy(high), n_trial; p_slip=0.02, N=1)
-        plot!(p2, cummean(invert(trace)[1]), w=1; groups.high.color)
-        plot!(p1, cummean(invert(trace)[1]), w=1; groups.high.color)
-
-        trace = learn(n, copy(low), n_trial; p_slip=0.02, N=1)
-        plot!(p2, cummean(invert(trace)[1]), w=1; groups.low.color)
-        plot!(p1, cummean(invert(trace)[1]), w=1; groups.low.color)
+        high = learn(n, good, n_trial; p_slip=0.02, N=1)
+        low = learn(n, bad, n_trial; p_slip=0.02, N=1)
+        (high, low)
     end
-    plot(p1, p2, size=(600, 250), leftmargin=5mm, bottommargin=5mm)
+end
+
+figure("learning_control", pdf=true) do
+    for (high, low) in traces
+        plot!(invert(high)[2]; groups.high.color)
+        plot!(invert(low)[2]; groups.low.color)
+    end
+    plot!(size=(300, 200), grid=false, ticks=false, framestyle=:origin, widen=false)
+end
+
+figure("learning_reward", pdf=true) do
+    for (high, low) in traces
+        plot!(rollingmean(invert(high)[1], 100); groups.high.color)
+        plot!(rollingmean(invert(low)[1], 100); groups.low.color)
+    end
+    plot!(size=(300, 200), grid=false, ticks=false, framestyle=:origin, widen=false)
 end
 

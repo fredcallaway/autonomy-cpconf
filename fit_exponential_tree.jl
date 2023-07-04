@@ -1,11 +1,9 @@
-include("figure.jl")
+include("base.jl")
 include("curve_fitting.jl")
-include("utils.jl")
 include("tree.jl")
 using ProgressMeter
 
 # %% --------
-
 
 function control_ratio(t, p_slip)
     d1 = VDist(t; p_slip)
@@ -21,57 +19,56 @@ function control_ratio(t, p_slip)
 end
 
 
-# %% --------
-slips = .1:.1:.4
+# %% ==================== individual ====================
 
-curves = map() do p_slip
-    repeatedly(30) do
-        t = tree(14, Normal(0, 1));
-        control_ratio(t, p_slip)
+αs = [.6, .7, .8, .9]
+p_slips = 1 .- αs
+
+curves = cache("cache/curves") do
+    map(p_slips) do p_slip
+        repeatedly(30) do
+            t = tree(14, Normal(0, 1));
+            control_ratio(t, p_slip)
+        end
     end
 end
 
 # %% --------
+
 x = -3:.5:3
 
-figure() do
-    plots = map(curves, slips) do curve, p_slip
-        p = plot(title="p_slip = $p_slip", titlefontsize=8)
+figure("tree_indiv_big"; pdf=true) do
+    plots = map(curves, p_slips) do curve, p_slip
+        p = plot(titlefontsize=8, ylim=(0, 120))
         xs = reduce(vcat, fill(x, 30))
         ys = reduce(vcat, curve)
         plot!(x, reduce(hcat, curve), color=:black, alpha=0.3, w=1)
-        plot!(-3:.01:3, exponential(-3:.01:3, fit_exponential(xs, ys)), color=:red, ls=:dot)
+        plot!(-3:.01:3, exponential(-3:.01:3, fit_exponential(xs, ys)), ls=:dot, color=CBIAS)
         p
     end
-    plot(plots..., size=(400, 400))
+    plot(plots..., size=(800, 200), layout=(1, 4), grid=false,
+        # xticks=[-3, 0, 3], yticks=[0, 20, 40]
+        ticks=false, widen=false, framestyle=:origin
+    )
 end
 
 
 
-# %% --------
+# %% ==================== averages ====================
 
-figure() do
-    plots = map(.1:.1:.4) do p_slip
-        p = plot()
-        repeatedly(30) do
-            t = tree(14, Normal(0, 1));
-            plot!(control_ratio(t, p_slip)..., w=1, color=:black, alpha=0.3)
+
+# p_slips = logrange(.05, .5; length=5)[1:end-1]
+
+hists = cache("cache/hists") do
+    map(p_slips) do p_slip
+        ds = @showprogress map(1:5000) do i
+            VDist(tree(14, Normal(0, 1)); p_slip);
         end
-        p
+
+        p = reduce(vcat, map(get(:p), ds))
+        v = reduce(vcat, map(get(:v), ds))
+        hist = fit(Histogram, v, Weights(p), -6:.1:6)
     end
-    plot(plots...)
-end
-
-# %% --------
-
-hists = map(0.:.1:.4) do p_slip
-    ds = @showprogress map(1:5000) do i
-        VDist(tree(14, Normal(0, 1)); p_slip);
-    end
-
-    p = reduce(vcat, map(get(:p), ds))
-    v = reduce(vcat, map(get(:v), ds))
-    hist = fit(Histogram, v, Weights(p), -4:.1:4)
 end
 
 # %% --------
@@ -79,24 +76,18 @@ end
 pdfs = map(hists) do hist
     StatsBase.normalize(hist, mode=:pdf).weights
 end
+
 x = centers(hists[1].edges[1])
 y0 = pdf.(Normal(0,1), x)
 
-params = map(pdfs) do y1
-    fit_exponential(x, y1 ./ y0)
-end
-
-figure() do
-    plot(0:.1:.4, invert(params)[3])
-end
-
-figure("tree_returns") do
-    for y1 in pdfs
-        plot!(x, y1)
+figure("tree_returns_big"; pdf=true) do
+    ys = [[y0]; pdfs]
+    pal = range(parse(Colorant, groups.low.color), stop=parse(Colorant, groups.high.color), length=length(ys))
+    foreach(enumerate(ys)) do (i, y1 )
+        plot!(x, y1, color=pal[i])
     end
-    plot!(x, y0, color=:black)
+    plot!(ticks=false, grid=false, size=(450, 250), framestyle=:origin, widen=false)
 end
-
 # %% --------
 
 figure("tree_fits") do

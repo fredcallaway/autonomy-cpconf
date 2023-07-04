@@ -1,8 +1,8 @@
 using LsqFit
 
-@. exponential(x, (C, x0, β)) = C + exp(β * (x - x0))
+@. exponential(x, (β, a)) = exp(β * x + a)
 
-fit_exponential(x, y) = curve_fit(exponential, x, y, [1., 0., 1.]).param
+fit_exponential(x, y) = curve_fit(exponential, x, y, [1., 0.]).param
 
 function plot_fit!(x, y)
     keep = isfinite.(x) .& isfinite.(y)

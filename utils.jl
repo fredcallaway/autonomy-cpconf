@@ -6,6 +6,8 @@ using Statistics
 using DataFrames, DataFramesMeta, CSV
 using Printf
 
+
+rollingmean(vs,n) = [sum(@view vs[i:(i+n-1)])/n for i in 1:(length(vs)-(n-1))]
 cummean(x) = cumsum(x) ./ eachindex(x)
 
 centers(x::AbstractRange) = minimum(x)+step(x)/2:step(x):maximum(x)
@@ -64,6 +66,7 @@ function cache(f, file; disable=false, read_only=false, overwrite=false)
     disable && return f()
     !overwrite && isfile(file) && return deserialize(file)
     read_only && error("No cached result $file")
+    mkpath(dirname(file))
     result = f()
     serialize(file, result)
     result
@@ -160,6 +163,8 @@ linscale(x, low, high) = low + x * (high-low)
 logscale(x, low, high) = exp(log(low) + x * (log(high) - log(low)))
 unlinscale(x, low, high) = (x - low) / (high-low)
 unlogscale(x, low, high) = (log(x) - log(low)) / (log(high) - log(low))
+
+logrange(start, stop; length) = logscale.(range(0, 1; length), start, stop)
 
 juxt(fs...) = x -> Tuple(f(x) for f in fs)
 clip(x, lo, hi) = min(hi, max(lo, x))

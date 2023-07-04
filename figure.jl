@@ -5,7 +5,7 @@ using AxisKeys
 
 mkpath(".fighist")
 mkpath("figs")
-gr(label="", dpi=200, size=(300,200), lw=3)
+gr(label="", dpi=200, size=(300,200), thickness_scaling=2, w=2)
 ENV["GKSwstype"] = "nul"
 
 function figure(f, name="tmp"; pdf=false, kws...)
