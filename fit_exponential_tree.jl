@@ -1,28 +1,29 @@
-include("base.jl")
-include("curve_fitting.jl")
-include("tree.jl")
-using ProgressMeter
+using Distributed
+addprocs()
+@everywhere begin
+    include("base.jl")
+    include("curve_fitting.jl")
+    include("tree.jl")
+    using ProgressMeter
 
-# %% --------
+    function control_ratio(t, p_slip)
+        d1 = VDist(t; p_slip)
+        d0 = VDist(t; p_slip=.5)
 
-function control_ratio(t, p_slip)
-    d1 = VDist(t; p_slip)
-    d0 = VDist(t; p_slip=.5)
+        h1 = fit(Histogram, d1.v, Weights(d1.p), -3.25:.5:3.25)
+        h0 = fit(Histogram, d0.v, Weights(d0.p), -3.25:.5:3.25)
 
-    h1 = fit(Histogram, d1.v, Weights(d1.p), -3.25:.5:3.25)
-    h0 = fit(Histogram, d0.v, Weights(d0.p), -3.25:.5:3.25)
+        x = centers(h0.edges[1])
+        p0 = StatsBase.normalize(h0, mode=:pdf).weights
+        p1 = StatsBase.normalize(h1, mode=:pdf).weights
+        p1 ./ p0
+    end
 
-    x = centers(h0.edges[1])
-    p0 = StatsBase.normalize(h0, mode=:pdf).weights
-    p1 = StatsBase.normalize(h1, mode=:pdf).weights
-    p1 ./ p0
+    αs = [.6, .7, .8, .9]
+    p_slips = 1 .- αs
 end
 
-
 # %% ==================== individual ====================
-
-αs = [.6, .7, .8, .9]
-p_slips = 1 .- αs
 
 curves = cache("cache/curves") do
     map(p_slips) do p_slip
@@ -35,9 +36,9 @@ end
 
 # %% --------
 
-x = -3:.5:3
 
 figure("tree_indiv_big"; pdf=true) do
+    x = -3:.5:3
     plots = map(curves, p_slips) do curve, p_slip
         p = plot(titlefontsize=8, ylim=(0, 120))
         xs = reduce(vcat, fill(x, 30))
@@ -58,19 +59,18 @@ end
 
 
 # p_slips = logrange(.05, .5; length=5)[1:end-1]
-
-hists = cache("cache/hists") do
+hists = cache("cache/hists", overwrite=true) do
+    edges = -6:.1:6
+    n_sim = 1000000
     map(p_slips) do p_slip
-        ds = @showprogress map(1:5000) do i
-            VDist(tree(14, Normal(0, 1)); p_slip);
+        weights = @showprogress @distributed (+) for i in 1:n_sim
+            # i % 100 == 0 && yield()
+            d = VDist(tree(14, Normal(0, 1)); p_slip);
+            fit(Histogram, d.v, Weights(d.p), edges).weights
         end
-
-        p = reduce(vcat, map(get(:p), ds))
-        v = reduce(vcat, map(get(:v), ds))
-        hist = fit(Histogram, v, Weights(p), -6:.1:6)
+        Histogram(edges, weights)
     end
 end
-
 # %% --------
 
 pdfs = map(hists) do hist
