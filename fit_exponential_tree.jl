@@ -59,9 +59,9 @@ end
 
 
 # p_slips = logrange(.05, .5; length=5)[1:end-1]
-hists = cache("cache/hists", overwrite=true) do
-    edges = -6:.1:6
-    n_sim = 1000000
+hists = cache("cache/hists") do
+    edges = -6:.01:6
+    n_sim = Int(1e6)
     map(p_slips) do p_slip
         weights = @showprogress @distributed (+) for i in 1:n_sim
             # i % 100 == 0 && yield()
@@ -80,11 +80,14 @@ end
 x = centers(hists[1].edges[1])
 y0 = pdf.(Normal(0,1), x)
 
+using SmoothingSplines
+
 figure("tree_returns_big"; pdf=true) do
     ys = [[y0]; pdfs]
     pal = range(parse(Colorant, groups.low.color), stop=parse(Colorant, groups.high.color), length=length(ys))
     foreach(enumerate(ys)) do (i, y1 )
-        plot!(x, y1, color=pal[i])
+        m = fit(SmoothingSpline, x, y1, 1e-3)
+        plot!(x, predict(m, x), color=pal[i])
     end
     plot!(ticks=false, grid=false, size=(450, 250), framestyle=:origin, widen=false)
 end
@@ -97,6 +100,6 @@ figure("tree_fits") do
         plot_fit!(x, y1 ./ y0)
         # plot!(xlim=(-2, 5), ylim=(-3, 10))
     end
-    plot(ps..., size=(800,200), layout=(1,5))
+    plot(ps..., size= 1.5 .* (800,200), layout=(1,5))
 end
 

@@ -2,7 +2,7 @@
 
 julia_version = "1.9.0"
 manifest_format = "2.0"
-project_hash = "cda9fdf09078b51168de57ce19672675c8ff1260"
+project_hash = "f0b9c2729034304ef7c333dac7b2af3ccebf06f3"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1061,6 +1061,12 @@ deps = ["InteractiveUtils", "MacroTools"]
 git-tree-sha1 = "5d7e3f4e11935503d3ecaf7186eac40602e7d231"
 uuid = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
 version = "0.9.4"
+
+[[deps.SmoothingSplines]]
+deps = ["LinearAlgebra", "Random", "Reexport", "StatsBase"]
+git-tree-sha1 = "6b3fef7674583be859ec8677f43e7fb2bc11481f"
+uuid = "102930c3-cf33-599f-b3b1-9a29a5acab30"
+version = "0.3.1"
 
 [[deps.SnoopPrecompile]]
 deps = ["Preferences"]
