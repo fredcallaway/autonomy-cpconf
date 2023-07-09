@@ -47,7 +47,8 @@ figure("tree_indiv_big"; pdf=true) do
         plot!(-3:.01:3, exponential(-3:.01:3, fit_exponential(xs, ys)), ls=:dot, color=CBIAS)
         p
     end
-    plot(plots..., size=(800, 200), layout=(1, 4), grid=false,
+    plot(plots..., size=(770, 250), layout=(1, 4), grid=false,
+        xlim = (-1, 3),
         # xticks=[-3, 0, 3], yticks=[0, 20, 40]
         ticks=false, widen=false, framestyle=:origin
     )

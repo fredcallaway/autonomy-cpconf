@@ -73,7 +73,7 @@ end
 fig("learning_bias") do
     foreach(groups) do (;β, color)
         # β = min(.7, β)
-        p = @. exp(β * u)
+        p = @. abs(u) .* exp(β * u)
         plot!(u, p; color, ylim=(0, 10))
     end
 end
